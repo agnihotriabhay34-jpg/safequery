@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SafeQuery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F3F5F4;
+    --surface: #FFFFFF;
+    --ink: #1B2421;
+    --muted: #5E6B66;
+    --line: #D5DCD9;
+    --line-soft: #E6EBE9;
+    --accent: #0F6B5C;
+    --accent-ink: #FFFFFF;
+    --accent-wash: #E3F0ED;
+
+    --ok: #1E7F4F;      --ok-wash: #E4F3EA;
+    --warn: #9A5B00;    --warn-wash: #FBF0DC;
+    --bad: #B3261E;     --bad-wash: #FBE7E5;
+    --idle: #8A9792;    --idle-wash: #ECEFEE;
+
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    --radius: 6px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 15px/1.55 var(--sans); }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
+  .hidden { display: none !important; }
+
+  /* ---------- header ---------- */
+  header.wrap { padding-top: 34px; padding-bottom: 26px; }
+  .brand { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .brand h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  .brand p { margin: 0; color: var(--muted); }
+
+  /* ---------- database panel ---------- */
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .db { padding: 18px 20px; }
+  .db-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .db-head h2 { margin: 0; font-size: 15px; font-weight: 600; }
+  .switch { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .switch button { border: 0; background: transparent; padding: 7px 14px; cursor: pointer; color: var(--muted); }
+  .switch button[aria-selected="true"] { background: var(--ink); color: #fff; }
+  .db-body { margin-top: 16px; }
+  .upload { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .hint { color: var(--muted); font-size: 13px; }
+  .fields { display: grid; grid-template-columns: 2fr 0.8fr 1.3fr 1.3fr 1.3fr; gap: 10px; }
+  .fields label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  .fields input[type=text], .fields input[type=password], .fields input[type=number] {
+    width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--paper); color: var(--ink); }
+  .fields-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .check { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+
+  .btn { border: 1px solid var(--ink); background: var(--ink); color: #fff; padding: 9px 18px; border-radius: var(--radius);
+         font-weight: 500; cursor: pointer; }
+  .btn.secondary { background: transparent; color: var(--ink); border-color: var(--line); }
+  .btn.accent { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn:disabled { opacity: .55; cursor: progress; }
+  .btn.small { padding: 5px 11px; font-size: 13px; }
+
+  /* connected state */
+  .connected { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .connected .name { font-weight: 600; }
+  .tag { font-size: 12.5px; padding: 2px 9px; border-radius: 999px; background: var(--accent-wash); color: var(--accent); }
+  .connected .grow { flex: 1; }
+  details.tables { margin-top: 12px; }
+  details.tables summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  .table-list { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 13px; }
+  .table-list span { color: var(--ink); }
+  .table-list em { font-style: normal; color: var(--muted); }
+  .status-line { margin-top: 12px; font-size: 13.5px; color: var(--muted); }
+  .status-line:empty { display: none; }
+  .status-line.error { color: var(--bad); }
+
+  /* ---------- ask ---------- */
+  .ask { margin-top: 22px; display: flex; gap: 10px; }
+  .ask input { flex: 1; min-width: 0; padding: 15px 16px; font-size: 17px; border: 1px solid var(--line);
+               border-radius: var(--radius); background: var(--surface); }
+  .ask input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-wash); }
+  .ask .btn { padding: 0 26px; font-size: 16px; }
+
+  .examples { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .examples span { color: var(--muted); font-size: 13.5px; margin-right: 2px; }
+  .examples button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px;
+                     padding: 6px 13px; font-size: 13.5px; cursor: pointer; color: var(--ink); }
+  .examples button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- result ---------- */
+  .result { margin: 26px 0 60px; display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+
+  .verdict { padding: 22px 24px 20px; border-left: 5px solid var(--idle); }
+  .verdict.verified { border-left-color: var(--ok); }
+  .verdict.flagged { border-left-color: var(--warn); }
+  .verdict.blocked, .verdict.error { border-left-color: var(--bad); }
+  .verdict-top { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .verdict-word { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+  .verified .verdict-word { color: var(--ok); }
+  .flagged .verdict-word { color: var(--warn); }
+  .blocked .verdict-word, .error .verdict-word { color: var(--bad); }
+  .unanswerable .verdict-word { color: var(--muted); }
+  .verdict-meaning { color: var(--muted); }
+  .verdict-meta { margin-left: auto; color: var(--muted); font-size: 13px; }
+
+  /* the checkpoint strip: the three layers every answer passes through */
+  .checks { list-style: none; margin: 18px 0 4px; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); }
+  .checks li { position: relative; padding-top: 22px; font-size: 13.5px; }
+  .checks li::before { content: ""; position: absolute; top: 7px; left: 0; right: 0; height: 2px; background: var(--line); }
+  .checks li:first-child::before { left: 9px; }
+  .checks li:last-child::before { right: auto; width: 9px; }
+  .checks .node { position: absolute; top: 0; left: 0; width: 16px; height: 16px; border-radius: 50%;
+                  background: var(--surface); border: 2px solid var(--idle); display: grid; place-items: center; }
+  .checks .node svg { width: 9px; height: 9px; }
+  .checks .pass .node { background: var(--ok); border-color: var(--ok); }
+  .checks .fail .node { background: var(--bad); border-color: var(--bad); }
+  .checks .warn .node { background: var(--warn); border-color: var(--warn); }
+  .checks .skip .node { border-style: dashed; }
+  .checks .label { font-weight: 600; display: block; }
+  .checks .detail { color: var(--muted); display: block; padding-right: 10px; }
+
+  .answer { font-size: 19px; line-height: 1.45; margin: 18px 0 0; max-width: 62ch; }
+  .concerns { margin: 14px 0 0; padding: 12px 14px 12px 32px; border-radius: var(--radius); font-size: 14px; }
+  .concerns.flagged, .concerns.unanswerable { background: var(--warn-wash); color: #5C3A00; }
+  .concerns.blocked, .concerns.error { background: var(--bad-wash); color: #6E1A14; }
+  .concerns.verified { background: var(--idle-wash); color: var(--muted); }
+  .concerns li + li { margin-top: 4px; }
+
+  .block { margin-top: 18px; }
+  .block-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .block-head h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  .block-head .hint { margin-right: auto; margin-left: 10px; }
+  pre.sql { margin: 0; padding: 14px 16px; background: #17211E; color: #DDEDE8; border-radius: var(--radius);
+            font: 13.5px/1.6 var(--mono); white-space: pre-wrap; word-break: break-word; }
+  .grid-wrap { max-height: 440px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--paper); font-weight: 600; font-size: 13px; color: var(--muted); }
+  td.num { text-align: right; }
+  tr:last-child td { border-bottom: 0; }
+
+  /* ---------- trace ---------- */
+  .trace { padding: 20px 22px; }
+  .trace h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .trace > p { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; }
+  .attempt { font-size: 12.5px; color: var(--muted); margin: 14px 0 8px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .attempt:first-of-type { border-top: 0; padding-top: 0; margin-top: 4px; }
+  .steps { list-style: none; margin: 0; padding: 0; }
+  .step { position: relative; padding: 0 0 14px 22px; }
+  .step::before { content: ""; position: absolute; left: 5px; top: 16px; bottom: 0; width: 1px; background: var(--line); }
+  .step:last-child::before { display: none; }
+  .dot { position: absolute; left: 0; top: 5px; width: 11px; height: 11px; border-radius: 50%; background: var(--idle); }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
+  .dot.info { background: var(--accent); }
+  .step-title { font-weight: 500; font-size: 14px; }
+  .step-body { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .step-body ul { margin: 4px 0 0; padding-left: 16px; }
+  .step-body code { font: 12px/1.5 var(--mono); color: var(--ink); background: var(--paper); padding: 6px 8px;
+                    border-radius: 4px; display: block; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
+
+  /* ---------- empty + working states ---------- */
+  .empty { margin: 34px 0 60px; color: var(--muted); max-width: 60ch; }
+  .empty h2 { color: var(--ink); font-size: 17px; font-weight: 600; margin: 0 0 6px; }
+  .working { margin: 26px 0; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%;
+             animation: spin .8s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+
+  @media (max-width: 900px) {
+    .result { grid-template-columns: 1fr; }
+    .fields { grid-template-columns: 1fr 1fr; }
+    .fields label:first-child { grid-column: 1 / -1; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 0 16px; }
+    .ask { flex-direction: column; }
+    .ask .btn { padding: 12px; }
+    .checks { grid-template-columns: 1fr; gap: 10px; }
+    .checks li { padding: 0 0 0 26px; }
+    .checks li::before { display: none; }
+    .verdict-meta { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header class="wrap">
+  <div class="brand">
+    <h1>SafeQuery</h1>
+    <p>Ask your database a question. Every answer is checked before you see it.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- database -->
+  <section class="panel db" aria-labelledby="db-title">
+    <div id="db-setup">
+      <div class="db-head">
+        <h2 id="db-title">Connect a database</h2>
+        <div class="switch" role="tablist" aria-label="Database type">
+          <button role="tab" aria-selected="true" data-tab="sqlite">SQLite file</button>
+          <button role="tab" aria-selected="false" data-tab="mysql">MySQL server</button>
+        </div>
+      </div>
+
+      <div class="db-body" id="pane-sqlite">
+        <div class="upload">
+          <input type="file" id="file" accept=".db,.sqlite,.sqlite3" class="hidden">
+          <button class="btn" id="pick">Upload a .db file</button>
+          <span class="hint">SQLite files ending in .db, .sqlite or .sqlite3. Opened read-only.</span>
+        </div>
+      </div>
+
+      <form class="db-body hidden" id="pane-mysql" autocomplete="off">
+        <div class="fields">
+          <label>Host <input type="text" id="my-host" value="127.0.0.1"></label>
+          <label>Port <input type="number" id="my-port" value="3306"></label>
+          <label>User <input type="text" id="my-user" placeholder="readonly_user"></label>
+          <label>Password <input type="password" id="my-pass"></label>
+          <label>Database <input type="text" id="my-db" placeholder="retail"></label>
+        </div>
+        <div class="fields-foot">
+          <label class="check"><input type="checkbox" id="my-refresh"> Re-read the schema instead of using the saved copy</label>
+          <button class="btn" id="connect" type="submit">Connect</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="db-connected" class="hidden">
+      <div class="connected">
+        <span class="name" id="db-name"></span>
+        <span class="tag" id="db-dialect"></span>
+        <span class="hint grow" id="db-meta"></span>
+        <button class="btn secondary small" id="change">Change database</button>
+      </div>
+      <details class="tables">
+        <summary id="tables-summary">Show tables</summary>
+        <div class="table-list" id="tables"></div>
+      </details>
+    </div>
+
+    <div class="status-line" id="db-status" role="status"></div>
+  </section>
+
+  <!-- question -->
+  <form class="ask" id="ask-form">
+    <label for="question" class="hidden">Your question</label>
+    <input id="question" type="text" placeholder="Connect a database to start asking" disabled autocomplete="off">
+    <button class="btn accent" id="ask" type="submit" disabled>Ask</button>
+  </form>
+
+  <div id="examples" class="examples hidden"></div>
+
+  <div id="working" class="working hidden" role="status"><span class="spinner"></span><span id="working-text">Checking…</span></div>
+
+  <div id="empty" class="empty">
+    <h2>How it works</h2>
+    SafeQuery finds the tables your question needs, writes the SQL, then checks it three times: that every table
+    and column really exists, that it runs safely without changing anything, and that the result actually answers
+    what you asked. If a check fails, it fixes the query and tries again.
+  </div>
+
+  <!-- result -->
+  <div id="result" class="result hidden">
+    <div>
+      <section class="panel verdict" id="verdict" aria-live="polite">
+        <div class="verdict-top">
+          <span class="verdict-word" id="verdict-word"></span>
+          <span class="verdict-meaning" id="verdict-meaning"></span>
+          <span class="verdict-meta" id="verdict-meta"></span>
+        </div>
+        <ol class="checks" id="checks"></ol>
+        <p class="answer" id="answer"></p>
+        <ul class="concerns hidden" id="concerns"></ul>
+
+        <div class="block hidden" id="rows-block">
+          <div class="block-head">
+            <h3>Result</h3>
+            <span class="hint" id="rows-note"></span>
+            <button class="btn secondary small" id="csv" type="button">Download CSV</button>
+          </div>
+          <div class="grid-wrap"><table id="table"></table></div>
+        </div>
+
+        <div class="block hidden" id="sql-block">
+          <div class="block-head">
+            <h3 id="sql-title">SQL</h3>
+            <button class="btn secondary small" id="copy" type="button">Copy SQL</button>
+          </div>
+          <pre class="sql" id="sql"></pre>
+        </div>
+      </section>
+    </div>
+
+    <aside class="panel trace" aria-labelledby="trace-title">
+      <h2 id="trace-title">How it got here</h2>
+      <p>Each agent and check, in the order they ran.</p>
+      <div id="trace"></div>
+    </aside>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const ICON = {
+  pass: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.2 2.2L8.5 2.6" fill="none" stroke="#fff" stroke-width="1.8"/></svg>',
+  fail: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2L2 8" stroke="#fff" stroke-width="1.8"/></svg>',
+  warn: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.5v4.2M5 7.6v.9" stroke="#fff" stroke-width="1.8"/></svg>',
+  skip: "",
+};
+
+const VERDICT = {
+  verified:     ["Verified", "Passed all three checks."],
+  flagged:      ["Flagged", "It ran, but the reviewer has concerns. Check before using it."],
+  blocked:      ["Blocked", "This would change data. SafeQuery only reads."],
+  unanswerable: ["Not answerable", "The tables it looked at don't hold what the question asks for."],
+  error:        ["Couldn't answer", "No valid query after every attempt."],
+};
+
+let lastResult = null;
+
+// One id per browser tab, so every visitor (and every tab) gets their own database on a shared server.
+const SESSION_ID = (() => {
+  const make = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36));
+  try {
+    let id = sessionStorage.getItem("safequery-session");
+    if (!id) { id = make(); sessionStorage.setItem("safequery-session", id); }
+    return id;
+  } catch { return make(); }   // storage blocked (e.g. embedded page): keep the id for this page only
+})();
+
+async function api(path, options = {}) {
+  const headers = { ...(options.headers || {}), "X-Session-Id": SESSION_ID };
+  const res = await fetch(path, { ...options, headers });
+  let data = {};
+  try { data = await res.json(); } catch { /* non-JSON error page */ }
+  if (!res.ok) throw new Error(data.detail || `Request failed (${res.status}).`);
+  return data;
+}
+
+/* ---------- database ---------- */
+function setTab(name) {
+  document.querySelectorAll(".switch button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  $("pane-sqlite").classList.toggle("hidden", name !== "sqlite");
+  $("pane-mysql").classList.toggle("hidden", name !== "mysql");
+}
+document.querySelectorAll(".switch button").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+
+function setStatus(text, isError = false, busy = false) {
+  $("db-status").className = "status-line" + (isError ? " error" : "");
+  $("db-status").innerHTML = busy ? `<span style="display:inline-flex;gap:8px;align-items:center"><span class="spinner"></span>${esc(text)}</span>` : esc(text);
+}
+
+function showConnected(data) {
+  $("db-setup").classList.add("hidden");
+  $("db-connected").classList.remove("hidden");
+  $("db-name").textContent = data.demo ? "Demo: Indian retail company" : data.database;
+  $("db-dialect").textContent = data.dialect === "mysql" ? "MySQL" : "SQLite";
+  const secs = (data.load_ms / 1000).toFixed(1);
+  $("db-meta").textContent = data.demo
+    ? `${data.tables.length} tables of sample data: stores, orders, payments, returns, reviews and more`
+    : `${data.tables.length} tables, ${data.from_cache ? "loaded from saved copy" : "read"} in ${secs}s`;
+  $("change").textContent = data.demo ? "Use your own database" : "Change database";
+  const ex = data.examples || [];
+  $("examples").classList.toggle("hidden", !ex.length);
+  $("examples").innerHTML = ex.length ? `<span>Try one:</span>` +
+    ex.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join("") : "";
+  $("examples").querySelectorAll("button").forEach(b => b.onclick = () => {
+    $("question").value = b.dataset.q; $("ask-form").requestSubmit();
+  });
+  $("tables-summary").textContent = `Show all ${data.tables.length} tables`;
+  $("tables").innerHTML = data.tables.map(t =>
+    `<span title="${esc(t.description || t.columns.join(", "))}">${esc(t.name)} <em>${Number(t.rows).toLocaleString()}</em></span>`).join("");
+  setStatus("");
+  $("question").disabled = false; $("ask").disabled = false;
+  $("question").placeholder = "Ask a question about this data, e.g. which region had the most revenue last year?";
+  $("question").focus();
+}
+$("change").onclick = () => {
+  $("db-connected").classList.add("hidden");
+  $("db-setup").classList.remove("hidden");
+};
+
+$("pick").onclick = () => $("file").click();
+$("file").onchange = async () => {
+  const f = $("file").files[0];
+  if (!f) return;
+  setStatus(`Reading ${f.name}: schema, values and table descriptions…`, false, true);
+  $("pick").disabled = true;
+  const body = new FormData(); body.append("file", f);
+  try {
+    showConnected(await api("/api/upload", { method: "POST", body }));
+  } catch (e) { setStatus(e.message, true); }
+  finally { $("pick").disabled = false; $("file").value = ""; }
+};
+
+$("pane-mysql").onsubmit = async (e) => {
+  e.preventDefault();
+  const body = { host: $("my-host").value.trim(), port: Number($("my-port").value) || 3306,
+                 user: $("my-user").value.trim(), password: $("my-pass").value, database: $("my-db").value.trim(),
+                 refresh: $("my-refresh").checked };
+  if (!body.user || !body.database) { setStatus("Enter a user and a database name.", true); return; }
+  setStatus(`Connecting to ${body.database} on ${body.host}. Large remote databases can take a minute the first time…`, false, true);
+  $("connect").disabled = true;
+  try {
+    const data = await api("/api/connect/mysql", { method: "POST", headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify(body) });
+    $("my-pass").value = "";
+    showConnected(data);
+  } catch (err) { setStatus(err.message, true); }
+  finally { $("connect").disabled = false; }
+};
+
+/* ---------- checkpoint strip ---------- */
+function checkpoints(r) {
+  // Look at the attempt that produced the final outcome
+  const last = r.trace.filter(s => s.attempt).reduce((m, s) => Math.max(m, s.attempt), 0);
+  const at = (stage) => r.trace.filter(s => s.stage === stage && s.attempt === last).pop();
+  const g = at("guardrails"), x = at("execution"), vc = at("value_check"), v = at("verification");
+
+  const schema = !g ? ["skip", "Not reached"]
+    : g.ok ? (g.warnings.length ? ["warn", "Passed with warnings"] : ["pass", "Every table and column exists"])
+    : r.status === "blocked" ? ["fail", "Tried to change data"] : ["fail", "Referenced something that doesn't exist"];
+  const run = !x ? ["skip", "Not reached"]
+    : !x.ok ? ["fail", x.error]
+    : vc ? ["fail", "Matched nothing: an invented value"]
+    : ["pass", `Read-only, ${x.rows} row${x.rows === 1 ? "" : "s"} in ${x.ms} ms`];
+  const review = !v ? ["skip", "Not reached"]
+    : v.verdict === "correct" ? ["pass", `Answers the question (${Math.round(v.confidence * 100)}% sure)`]
+    : v.verdict === "incorrect" ? ["fail", "Doesn't answer the question"]
+    : ["warn", "Unsure it answers the question"];
+
+  return [["Schema check", ...schema], ["Ran safely", ...run], ["Answer reviewed", ...review]];
+}
+
+/* ---------- trace ---------- */
+function stepView(s) {
+  const list = (xs) => xs && xs.length ? `<ul>${xs.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  switch (s.stage) {
+    case "retrieval":
+      return ["info", "Found likely tables", esc(s.tables.join(", "))];
+    case "table_selection":
+      return ["info", "Chose the tables to use", `<b>${esc(s.tables.join(", "))}</b><br>${esc(s.reason)}`];
+    case "generation":
+      return ["info", "Wrote the SQL", s.sql ? `${esc(s.explanation)}<code>${esc(s.sql)}</code>` : esc(s.explanation || "No query written.")];
+    case "guardrails":
+      return [s.ok ? (s.warnings.length ? "warn" : "ok") : "bad", "Schema check",
+              s.ok ? (s.warnings.length ? "Passed, with warnings:" + list(s.warnings) : "Read-only, and every table and column exists.")
+                   : "Rejected:" + list(s.errors)];
+    case "execution":
+      return [s.ok ? "ok" : "bad", "Ran the query",
+              s.ok ? `${s.rows}${s.truncated ? "+" : ""} row${s.rows === 1 ? "" : "s"} in ${s.ms} ms` : esc(s.error)];
+    case "value_check":
+      return ["bad", "Checked the filter values", "The result was empty because of values that don't exist:" + list(s.errors)];
+    case "verification":
+      return [s.verdict === "correct" ? "ok" : s.verdict === "incorrect" ? "bad" : "warn", "Reviewed the answer",
+              `${s.verdict === "correct" ? "Answers the question" : s.verdict === "incorrect" ? "Doesn't answer the question" : "Unsure"} `
+              + `(${Math.round(s.confidence * 100)}% sure)` + list(s.issues)];
+  }
+  return ["", esc(s.stage), ""];
+}
+
+function renderTrace(trace) {
+  let html = "", open = false, current = null;
+  for (const s of trace) {
+    if (s.attempt && s.attempt !== current) {
+      if (open) html += "</ol>";
+      current = s.attempt;
+      html += `<div class="attempt">Attempt ${current}</div><ol class="steps">`;
+      open = true;
+    } else if (!open) { html += `<ol class="steps">`; open = true; }
+    const [cls, title, body] = stepView(s);
+    html += `<li class="step"><span class="dot ${cls}"></span><div class="step-title">${title}</div><div class="step-body">${body}</div></li>`;
+  }
+  if (open) html += "</ol>";
+  $("trace").innerHTML = html;
+}
+
+/* ---------- result ---------- */
+function showResult(r) {
+  lastResult = r;
+  $("empty").classList.add("hidden");
+  $("result").classList.remove("hidden");
+
+  const [word, meaning] = VERDICT[r.status] || [r.status, ""];
+  $("verdict").className = `panel verdict ${r.status}`;
+  $("verdict-word").textContent = word;
+  $("verdict-meaning").textContent = meaning;
+  const secs = (r.total_ms / 1000).toFixed(1);
+  $("verdict-meta").textContent = r.attempts ? `${r.attempts} attempt${r.attempts === 1 ? "" : "s"}, ${secs}s` : "";
+
+  $("checks").innerHTML = r.trace.length ? checkpoints(r).map(([label, state, detail]) =>
+    `<li class="${state}"><span class="node">${ICON[state]}</span><span class="label">${label}</span><span class="detail">${esc(detail)}</span></li>`).join("") : "";
+
+  $("answer").textContent = r.answer || "";
+  $("answer").classList.toggle("hidden", !r.answer);
+
+  const flags = r.flags || [];
+  $("concerns").className = `concerns ${r.status}` + (flags.length ? "" : " hidden");
+  $("concerns").innerHTML = flags.map(f => `<li>${esc(f)}</li>`).join("");
+
+  const hasRows = r.rows && r.rows.length;
+  $("rows-block").classList.toggle("hidden", !hasRows);
+  if (hasRows) {
+    const numeric = r.columns.map((_, i) => r.rows.every(row => row[i] === null || typeof row[i] === "number"));
+    $("table").innerHTML = `<thead><tr>${r.columns.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>` +
+      r.rows.map(row => `<tr>${row.map((v, i) => `<td${numeric[i] ? ' class="num"' : ""}>${esc(fmt(v))}</td>`).join("")}</tr>`).join("") +
+      `</tbody>`;
+    $("rows-note").textContent = r.truncated ? `First ${r.rows.length} rows` : `${r.rows.length} row${r.rows.length === 1 ? "" : "s"}`;
+  }
+
+  $("sql-block").classList.toggle("hidden", !r.sql);
+  $("sql-title").textContent = r.status === "blocked" ? "Blocked SQL (not run)" : "SQL";
+  $("sql").textContent = r.sql || "";
+  renderTrace(r.trace || []);
+}
+
+function fmt(v) {
+  if (typeof v === "number" && !Number.isInteger(v)) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  if (typeof v === "number") return v.toLocaleString();
+  return v ?? "";
+}
+
+$("copy").onclick = async () => {
+  try { await navigator.clipboard.writeText(lastResult?.sql || ""); $("copy").textContent = "Copied"; }
+  catch { $("copy").textContent = "Copy failed"; }
+  setTimeout(() => $("copy").textContent = "Copy SQL", 1500);
+};
+$("csv").onclick = () => {
+  if (!lastResult) return;
+  const cell = (v) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const csv = [lastResult.columns, ...lastResult.rows].map(r => r.map(cell).join(",")).join("\n");
+  const a = Object.assign(document.createElement("a"), {
+    href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: "safequery_result.csv" });
+  a.click(); URL.revokeObjectURL(a.href);
+};
+
+/* ---------- ask ---------- */
+$("ask-form").onsubmit = async (e) => {
+  e.preventDefault();
+  const question = $("question").value.trim();
+  if (!question) return;
+  $("ask").disabled = true;
+  $("working").classList.remove("hidden");
+  $("working-text").textContent = "Finding tables, writing SQL and running the checks…";
+  try {
+    showResult(await api("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+                                       body: JSON.stringify({ question }) }));
+  } catch (err) {
+    showResult({ status: "error", attempts: 0, total_ms: 0, answer: "", sql: "", flags: [err.message], rows: [], columns: [], trace: [] });
+  } finally {
+    $("ask").disabled = false;
+    $("working").classList.add("hidden");
+  }
+};
+
+async function loadStatus() {
+  try {
+    const d = await api("/api/status");
+    if (d.loaded) { showConnected(d); return; }
+    if (d.demo_loading) {
+      setStatus("Getting the demo database ready. This takes a few seconds after the site wakes up…", false, true);
+      setTimeout(loadStatus, 3000);
+    }
+  } catch { /* server not reachable yet */ }
+}
+loadStatus();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart
+pydantic>=2
+groq>=0.9
+python-dotenv
+chromadb>=0.5
+sqlglot>=25
+pymysql>=1.1
+cryptography
+pytest
+# Optional, only for EMBED_BACKEND=sentence-transformers (needs ~850 MB RAM):
+# sentence-transformers>=3
